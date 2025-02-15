@@ -11,7 +11,7 @@ The requirements for building Sigil on newer Linux systems Arch Linux, Debian 12
 To build Sigil on newer Linux systems, you need to get/do the following things:
 
 1. [A Linux build-toolchain](#gcc) with a C++17 capable compiler (gcc 7.x.x or higher recommended)
-2. [CMake](#cmake) (3.16 or higher)
+2. [CMake](#cmake) (3.18 or higher)
 3. [Qt6.4or higher](#qt6) (with QtWebEngine)
 4. [3rd-party dependencies](#thirdparty) (an optional step)
 5. [Python 3.9](#python)
@@ -55,7 +55,7 @@ To get Sigil's Qt6 requirements on Arch, `sudo pacman -S` the following packages
 + qt6-svg
 + qt6-webengine
 + qt6-tools
-+ qt6-5compat
++ qt6-5compat (not needed starting with Sigil 2.3.0)
 
 The following command can be copied and pasted for convenience on Arch-based systems:
 
@@ -130,6 +130,8 @@ The following command can be copied and pasted for convenience on Debian-based s
 
 That's all the Python stuff you will need to get Sigil "up and running", but if you want to make use of Sigil plugins that people are developing, you will also want to install the "standard" modules that ship with the binary version of Sigil on Windows and OS X.
 
+At this point, you may want to stop and decide if you want to install all of the extra modules needed for 3rd-party Sigil plugins into your system Python, or if you want to create a virtual Python environment specifically tailored for Sigil 3rd-party plugins. A good reason to do this is if your distro does not provide all of these extra modules in their repositories and/or they don't let you `sudo pip install` modules into your system Python without a lot scary warnings and hoop-jumping. This is often the case for PySide6. If you decide to go the virtual Python route, follow the [instructions here](./Linux_Virtual_Plugin_Environment.md), and then afterwards, skip to the [Getting Sigil's Source Code](#sigil) section and continue. If you want to install everything into your system Python, continue on.
+
 These should all be able to be installed with `sudo pacman -S` on Arch-based systems.
 
 + tk
@@ -158,7 +160,7 @@ The following command can be copied and pasted for convenience on Debian-based s
 `sudo apt-get install python3-pil.imagetk python3-html5lib python3-regex python3-pillow python3-cssselect python3-chardet`
 
 The PySide6 requirement for many 3rd-party plugins is not available via distro-maintained packages on Debian-based systems at the time of this writing).
-It can installed via PyPi.org with pip (or pip3) if your distro still allows using pip to install packages into the system-maintained Python environment. You may need to learn how to work with (or get around) the newer PEP 668 rules that distros are adopting.  We do not have the time or inclination to guide people in this regard.
+It can installed via PyPi.org with pip (or pip3) if your distro still allows using pip to install packages into the system-maintained Python environment. You may need to learn how to work with (or get around) the newer PEP 668 rules that distros are adopting. If you run into this issue, have a look at the [instructions](./Linux_Virtual_Plugin_Environment.md) for creating a virtual Python environment to run Sigil plugins.
 
 If you run into any that won't install with `sudo pacman -S` (or `sudo apt-get install`) you may be able to use pip to install them.
 
@@ -221,7 +223,7 @@ If you configured with the default install prefix, you can launch by entering "s
 
 To test if Sigil's Python 3.9+ plugin framework is fully functional, you can do the following:
 
-1. download testplugin_v019.zip from [https://github.com/Sigil-Ebook/Sigil/raw/master/docs/testplugin_v019.zip](https://github.com/Sigil-Ebook/Sigil/raw/master/docs/testplugin_v019.zip)
+1. Install the very latest testplugin_vxxx.zip from the 'docs' folder of your downloaded/extracted [Sigil source code](#sigil)
 2. open Sigil to the normal nearly blank template epub it generates when opened
 3. use Plugins->Manage Plugins menu and make sure you have a Python 3.4+ interpreter configured 
 4. use the "Add Plugin" button to navigate to and add testplugin_vXXX.zip and then hit "Okay" to exit the Manage Plugins Dialog

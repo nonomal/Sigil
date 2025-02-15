@@ -1,6 +1,6 @@
 /************************************************************************
 **
-**  Copyright (C) 2015-2024 Kevin B. Hendricks, Stratford Ontario Canada
+**  Copyright (C) 2015-2025 Kevin B. Hendricks, Stratford Ontario Canada
 **  Copyright (C) 2009-2011 Strahinja Markovic  <strahinja.markovic@gmail.com>
 **
 **  This file is part of Sigil.
@@ -297,7 +297,8 @@ private slots:
     void SaveAsFile(Resource *resource);
     void SaveAsFiles();
 
-    void OpenWith();
+    void OpenWithOtherApp();
+    void OpenWithClear();
 
     void OpenWithEditor(int) const;
 
@@ -483,6 +484,8 @@ private:
 
     QList <Resource *> ValidSelectedResourcesByMT(QStringList &mts);
 
+    bool IsCongruent(Resource::ResourceType selected_type, Resource::ResourceType candidate_type);
+
     void RefreshCounts();
 
 
@@ -546,13 +549,14 @@ private:
     QAction *m_ValidateWithW3C;
 
     QMenu *m_OpenWithContextMenu;
-    QAction *m_OpenWith;
+    QAction *m_OpenWithOtherApp;
+    QAction *m_OpenWithClear;
     QAction *m_OpenWithEditor0;
     QAction *m_OpenWithEditor1;
     QAction *m_OpenWithEditor2;
     QAction *m_OpenWithEditor3;
     QAction *m_OpenWithEditor4;
-
+    
     QSignalMapper *m_openWithMapper;
 
     /**

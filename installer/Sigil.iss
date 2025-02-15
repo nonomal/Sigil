@@ -5,14 +5,14 @@
 #define AppName "Sigil"
 
 [Setup]
-AppName={#AppName}${LEGACY_BUILD}
-AppVerName={#AppName}${LEGACY_BUILD} ${SIGIL_FULL_VERSION}
+AppName={#AppName}${BETA_BUILD}
+AppVerName={#AppName}${BETA_BUILD} ${SIGIL_FULL_VERSION}
 AppVersion=${SIGIL_FULL_VERSION}
 VersionInfoVersion=${SIGIL_FULL_VERSION}
-DefaultDirName={autopf}\{#AppName}${LEGACY_BUILD}
+DefaultDirName={autopf}\{#AppName}${BETA_BUILD}
 DisableDirPage=no
 AllowNoIcons=yes
-DefaultGroupName={#AppName}${LEGACY_BUILD}
+DefaultGroupName={#AppName}${BETA_BUILD}
 UninstallDisplayIcon={app}\{#AppName}.exe
 AppPublisher=Sigil-Ebook
 AppPublisherURL=https://github.com/Sigil-Ebook/Sigil
@@ -29,18 +29,18 @@ LicenseFile=${LICENSE_LOCATION}
 MinVersion=${WIN_MIN_VERSION}
 PrivilegesRequired=admin
 PrivilegesRequiredOverridesAllowed=commandline dialog
-OutputBaseFilename={#AppName}-${SIGIL_FULL_VERSION}-Windows${LEGACY_BUILD}${ISS_SETUP_FILENAME_PLATFORM}-Setup
+OutputBaseFilename={#AppName}-${SIGIL_FULL_VERSION}-Windows${BETA_BUILD}${ISS_SETUP_FILENAME_PLATFORM}-Setup
 ChangesAssociations=yes
 ;SetupLogging=yes
 
-; "ArchitecturesAllowed=x64" specifies that Setup cannot run on
-; anything but x64.
-; The ${ISS_ARCH} var is substituted with "x64" or an empty string
+; "ArchitecturesAllowed=x64compatible" specifies that Setup cannot run on
+; anything but x64 or arm64.
+; The ${ISS_ARCH} var is substituted with "x64compatible" or an empty string
 ArchitecturesAllowed="${ISS_ARCH}"
-; "ArchitecturesInstallIn64BitMode=x64" requests that the install be
-; done in "64-bit mode" on x64, meaning it should use the native
+; "ArchitecturesInstallIn64BitMode=x64compatible" requests that the install be
+; done in "64-bit mode" on x64 (or arm64), meaning it should use the native
 ; 64-bit Program Files directory and the 64-bit view of the registry.
-; The ${ISS_ARCH} var is substituted with "x64" or an empty string
+; The ${ISS_ARCH} var is substituted with "x64compatible" or an empty string
 ArchitecturesInstallIn64BitMode="${ISS_ARCH}"
 
 [Files]
@@ -78,7 +78,7 @@ Root: HKA; Subkey: "Software\Classes\Applications\{#AppName}.exe\shell\open\comm
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#AppName}.exe"
-Name: "{group}\Uninstall {#AppName}${LEGACY_BUILD}"; Filename: "{uninstallexe}"
+Name: "{group}\Uninstall {#AppName}${BETA_BUILD}"; Filename: "{uninstallexe}"
 ; Optional desktop icon.
 ; commondesktop if admin, userdesktop if not
-Components: dicon; Name: "{autodesktop}\{#AppName}${LEGACY_BUILD}"; Filename: "{app}\{#AppName}.exe"
+Components: dicon; Name: "{autodesktop}\{#AppName}${BETA_BUILD}"; Filename: "{app}\{#AppName}.exe"

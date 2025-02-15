@@ -223,26 +223,15 @@ set( LIBS_TO_LINK ${HUNSPELL_LIBRARIES} ${PCRE2_LIBRARIES} ${GUMBO_LIBRARIES} ${
                   Qt6::Widgets  Qt6::Xml  Qt6::PrintSupport  Qt6::WebEngineCore  
                   Qt6::WebEngineWidgets  Qt6::Network  Qt6::Concurrent Qt6::Svg)
 
-# Additions to LIBS_TO_LINK based on situation or platform
-if (${USE_NEWER_FINDPYTHON3})
-    set( _BUNDLED_PYVER "${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}" )
-    message(STATUS "Using newer Python3::Python target to link to Python")
-    list( APPEND LIBS_TO_LINK Python3::Python )
-else()
-    set( _BUNDLED_PYVER "${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}" )
-    message(STATUS "Using older PYTHON_LIBRARIES CMAKE variable to link to Python")
-    list( APPEND LIBS_TO_LINK ${PYTHON_LIBRARIES} )
-endif()
+# Additions to LIBS_TO_LINK for Python3
+set( _BUNDLED_PYVER "${Python3_VERSION_MAJOR}.${Python3_VERSION_MINOR}" )
+message(STATUS "Using newer Python3::Python target to link to Python")
+list( APPEND LIBS_TO_LINK Python3::Python )
 
 # QtUiTools needed for PySide plugins
 if ( APPLE )
     list( APPEND LIBS_TO_LINK Qt6::UiTools )
 endif()
-
-# QtWinExtras not in Qt6 as of 6.2.2
-#if ( WIN32 )
-#    list( APPEND LIBS_TO_LINK Qt6::WinExtras )
-#endif()
 
 target_link_libraries( ${PROJECT_NAME} ${LIBS_TO_LINK} )
 
@@ -314,10 +303,6 @@ if( APPLE )
                             DEPENDS ${PROJECT_NAME} )
     endif()
 
-    add_custom_target(  makedmg
-                        COMMAND macdeployqt Sigil.app -dmg
-                        WORKING_DIRECTORY ${WORK_DIR})
-
     add_custom_command( TARGET ${PROJECT_NAME} POST_BUILD COMMAND cp ${PROJECT_BINARY_DIR}/*.qm ${WORK_DIR}/Sigil.app/Contents/translations/ )
     foreach( QM ${QM_FILES} )
         # Copy Qt's qm files that coincide with the above
@@ -336,11 +321,8 @@ if( APPLE )
     add_custom_command( TARGET ${PROJECT_NAME} POST_BUILD COMMAND cp -r ${CMAKE_SOURCE_DIR}/src/Resource_Files/python3lib/* ${WORK_DIR}/Sigil.app/Contents/python3lib )
 
     if ( PKG_SYSTEM_PYTHON )
-        if ( ${USE_NEWER_FINDPYTHON3} )
-            set( PY_INTERP ${Python3_EXECUTABLE} )
-        else()
-            set( PY_INTERP ${PYTHON_EXECUTABLE} )
-        endif()
+        set( PY_INTERP ${Python3_EXECUTABLE} )
+
         add_custom_command( TARGET ${PROJECT_NAME} POST_BUILD COMMAND ${PY_INTERP} ARGS ${CMAKE_RUNTIME_OUTPUT_DIRECTORY}/osx_add_python_framework6.py )
         message(STATUS "Using ${PY_INTERP} to bundle python")
     endif()
@@ -384,7 +366,7 @@ elseif (MSVC)
     # Specify platform var for Inno
     if ( 64_BIT_PLATFORM )
         # Used in the ISS CMake configuration
-        set( ISS_ARCH "x64" )
+        set( ISS_ARCH "x64compatible" )
         set( ISS_SETUP_FILENAME_PLATFORM "-x64" )
     endif()
 
@@ -425,11 +407,11 @@ elseif (MSVC)
         # Sigil doesn't need QtUiTools or QtOpenGlWidgets to function,
         # but Pyside6 needs them to use the QUiLoader feature.
         add_custom_command( TARGET ${TARGET_FOR_COPY} POST_BUILD COMMAND
-	        windeployqt.exe --release --no-translations --no-compiler-runtime --dir ${MAIN_PACKAGE_DIR} 
+        ${QT_INSTALL_BINS}/windeployqt.exe --release --no-translations --no-compiler-runtime --dir ${MAIN_PACKAGE_DIR} 
             --libdir ${MAIN_PACKAGE_DIR} -openglwidgets ${MAIN_PACKAGE_DIR}/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX} )
     else()
         add_custom_command( TARGET ${TARGET_FOR_COPY} POST_BUILD COMMAND
-            windeployqt.exe --release --no-translations --no-compiler-runtime --dir ${MAIN_PACKAGE_DIR} 
+        ${QT_INSTALL_BINS}/windeployqt.exe --release --no-translations --no-compiler-runtime --dir ${MAIN_PACKAGE_DIR} 
             --libdir ${MAIN_PACKAGE_DIR} ${MAIN_PACKAGE_DIR}/${PROJECT_NAME}${CMAKE_EXECUTABLE_SUFFIX} )
     endif()
 
@@ -489,11 +471,7 @@ elseif (MSVC)
 
     # Create python virtual environment
     if ( PKG_SYSTEM_PYTHON )
-        if ( ${USE_NEWER_FINDPYTHON3} )
-            set( PY_INTERP ${Python3_EXECUTABLE} )
-        else()
-            set( PY_INTERP ${PYTHON_EXECUTABLE} )
-        endif()
+        set( PY_INTERP ${Python3_EXECUTABLE} )
         message(STATUS "Using ${PY_INTERP} to bundle python")
         add_custom_command( TARGET ${TARGET_FOR_COPY} POST_BUILD
                             COMMAND ${PY_INTERP} ARGS ${CMAKE_BINARY_DIR}/windows_python_gather6.py )
@@ -581,7 +559,7 @@ if( UNIX AND NOT APPLE )
         PROPERTY COMPILE_DEFINITIONS
         SIGIL_SHARE_ROOT="${SIGIL_SHARE_ROOT}" DICTS_ARE_BUNDLED=${INSTALL_BUNDLED_DICTS}
         EXTRA_DICT_DIRS="${EXTRA_DICT_DIRS}" MATHJAX3_DIR="${MATHJAX3_DIR}"
-        DONT_CHECK_UPDATES=${DISABLE_UPDATE_CHECK}
+        DONT_CHECK_UPDATES=${DISABLE_UPDATE_CHECK} VIRT_PYTHON_BIN="${Python3_EXECUTABLE}"
     )
 
     # Launch script for sigil

@@ -1,4 +1,4 @@
-########################################################
+###A#####################################################
 #  
 #  This is a CMake configuration file.
 #  To use it you need CMake which can be 
@@ -8,32 +8,35 @@
 #########################################################
 
 # Hard minimum version of cmake for all sub projects and Sigil
-cmake_minimum_required( VERSION 3.5 ) 
+cmake_minimum_required( VERSION 3.18 ) 
 
 project( Sigil )
 
-# Need CMAKE 3.18+ to make full use of new FindPython3
-# with the Development.Embed submodule.
-set( RECENT_CMAKE_VER "3.18.1" )
-if ( NOT DEFINED TRY_NEWER_FINDPYTHON3 )
-    set ( TRY_NEWER_FINDPYTHON3 0 )
+# Change this URL if the location of the CI Windows Qt6 download ever changes
+set (WINQTURL "https://github.com/dougmassay/win-qtwebkit-5.212/releases/download/v5.212-1")
+
+# Used to keep downloaded Qt and PySide6 versions in sync.
+# Check https://github.com/dougmassay/win-qtwebkit-5.212/releases/ to
+# see what versions are available. Defaults to 6.7.3.
+if(NOT DEFINED QTVER)
+    set(QTVER 6.8.2)
+endif()
+
+# Set to 1 to create and use a virtual Python venv on Windows and Linux.
+# Use in conjunction with QTVER to download/install correct PySide6 module
+if ( NOT DEFINED USE_VIRT_PY )
+    set ( USE_VERT_PY 0 )
+endif()
+
+# Set to 1 to download and use a custom-built Qt from WINQTURL.
+# Use in conjunction with QTVER to clarify which version of Qt to download.
+if ( NOT DEFINED DOWNLOAD_QT )
+    set ( DOWNLOAD_QT 0 )
 endif()
 
 # Set Inno minimum Windows version 
-if ( NOT DEFINED BUILD_FOR_WIN7 )
-    # Windows 10 (1809)
-    set( BUILD_FOR_WIN7 0 )
-    set ( WIN_MIN_VERSION 10.0.17763 )
-else()
-    # Windows 7sp1
-    set ( WIN_MIN_VERSION 6.1.7601 )
-endif()
-
-if (${CMAKE_VERSION} VERSION_GREATER_EQUAL ${RECENT_CMAKE_VER} AND ${TRY_NEWER_FINDPYTHON3})
-    set ( USE_NEWER_FINDPYTHON3 1 )
-else()
-    set ( USE_NEWER_FINDPYTHON3 0 )
-endif()
+# Windows 10 (1809)
+set ( WIN_MIN_VERSION 10.0.17763 )
 
 set( CMAKE_DEBUG_POSTFIX "d" )
 # Avoid the whole Release/Debug folder creation with Visual Studio
@@ -55,8 +58,8 @@ set( PACKAGE_DIRECTORY ${PROJECT_BINARY_DIR}/package )
 set( CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake_extras" )
 
 set( SIGIL_MAJOR_VERSION 2 )
-set( SIGIL_MINOR_VERSION 3 )
-set( SIGIL_REVISION_VERSION 1 )
+set( SIGIL_MINOR_VERSION 4 )
+set( SIGIL_REVISION_VERSION 2 )
 set( SIGIL_FULL_VERSION ${SIGIL_MAJOR_VERSION}.${SIGIL_MINOR_VERSION}.${SIGIL_REVISION_VERSION} )
 
 if( UNIX AND NOT APPLE )
@@ -110,39 +113,52 @@ if (USE_SYSTEM_LIBS)
     find_package( PkgConfig )
     find_package( MiniZip )
     pkg_check_modules( HUNSPELL hunspell )
-    if ( NOT APPLE )
-        pkg_check_modules( PCRE2 libpcre2-16 )
-    endif()
+    pkg_check_modules( PCRE2 libpcre2-16 )
 endif()
 
 message(STATUS "CMake version in use: ${CMAKE_VERSION}")
 
-if (${USE_NEWER_FINDPYTHON3})
-    message(STATUS "Using newer findpython3 cmake module")
-    if ( APPLE )
-        find_package(Python3 3.8 COMPONENTS Interpreter Development)
-    endif()
-    if ( WIN32 )
-        find_package(Python3 3.5 COMPONENTS Interpreter Development)
-    endif()
-    if( UNIX AND NOT APPLE )
-        find_package(Python3 3.4 COMPONENTS Interpreter Development)
-    endif()
-else()
-    message(STATUS "Using older findpython cmake module")
-    if ( APPLE )
-        find_package(PythonInterp 3.8)
-        find_package (PythonLibs 3.8)
-    endif()
-    if ( WIN32 )
-        find_package(PythonInterp 3.5)
-        find_package (PythonLibs 3.5)
-    endif()
-    if( UNIX AND NOT APPLE )
-        find_package(PythonInterp 3.4)
-        find_package (PythonLibs 3.4)
-    endif()
+message(STATUS "Using FindPython3 cmake module")
+# Find Python3 module for both the build and bundling
+if ( APPLE )
+    # cmake's FindPython3 does *not* find frameworks based on precendence in PATH
+    # so set some pretty specific hints using our own FindPython3MacFramework.cmake first
+    find_package(Python3MacFramework 3.9 QUIET)
+    find_package(Python3 3.9 COMPONENTS Interpreter Development)
 endif()
+if ( WIN32 )
+    if ( DOWNLOAD_QT )
+        include(windownloadqt.cmake)
+        set(CMAKE_PREFIX_PATH "${CMAKE_CURRENT_BINARY_DIR}/Qt${QTVER}/lib/cmake")
+        set(Qt6_Dir "${CMAKE_CURRENT_BINARY_DIR}/Qt${QTVER}/lib/cmake/Qt6")
+        if(NOT EXISTS "${Qt6_Dir}")
+            message(FATAL_ERROR "Qt6 download/configure unsuccessful!")
+        endif()
+    endif()
+    if ( USE_VIRT_PY )
+        include(winvirtpy.cmake)
+        # Set hints so virtual Python environement is found first
+        set(Python3_FIND_VIRTUAL ONLY)
+        set(Python3_FIND_REGISTRY NEVER)
+        set(Python3_FIND_STRATEGY LOCATION)
+        # Trick cmake's findPython3 module into thinking the virtual python is activated
+        set(VIRT_PATH "${CMAKE_CURRENT_BINARY_DIR}/sigilpy")
+        set(ENV{VIRTUAL_ENV} "${VIRT_PATH}")
+        if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/sigilpy/Scripts/python.exe")
+            message(FATAL_ERROR "Virtual Python setup unsuccessful!")
+        endif()
+    endif()
+    find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter Development)
+endif()
+if( UNIX AND NOT APPLE )
+    if ( USE_VIRT_PY )
+        # Must be run in an environment with the venv activated
+        set ( Python3_FIND_VIRTUAL ONLY )
+        add_definitions( -DLINUX_VIRT_PY )
+    endif()
+    find_package(Python3 3.9 COMPONENTS Interpreter Development)
+endif()
+
 
 # gumbo-parser it is our main xhtml/html5 parser.
 # We have an internal version because it diverges from Google's and GitHub's
@@ -151,3 +167,4 @@ add_subdirectory( internal/gumbo )
 
 add_subdirectory( 3rdparty/ )
 add_subdirectory( src/ )
+

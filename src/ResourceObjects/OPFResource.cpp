@@ -1,6 +1,6 @@
 /************************************************************************
 **
-**  Copyright (C) 2015-2024 Kevin B. Hendricks  Stratford, ON Canada
+**  Copyright (C) 2015-2025 Kevin B. Hendricks  Stratford, ON Canada
 **  Copyright (C) 2013      John Schember <john@nachtimwald.com>
 **  Copyright (C) 2009-2011 Strahinja Markovic  <strahinja.markovic@gmail.com>
 **
@@ -32,7 +32,9 @@
 #include <QRegularExpressionMatch>
 #include <QDateTime>
 #include <QDebug>
+#if QT_VERSION >= QT_VERSION_CHECK(6,5,0)
 #include <QTimeZone>
+#endif
 
 #include "BookManipulation/CleanSource.h"
 #include "BookManipulation/XhtmlDoc.h"
@@ -1501,7 +1503,11 @@ QString OPFResource::AddModificationDateMeta()
 {
     QString datetime;
     QDateTime local(QDateTime::currentDateTime());
-    local.setTimeZone(QTimeZone::utc());
+#if QT_VERSION >= QT_VERSION_CHECK(6,5,0)
+    local.setTimeZone(QTimeZone::UTC);
+#else
+    local.setTimeSpec(Qt::UTC);
+#endif
     datetime = local.toString(Qt::ISODate);
 
     QWriteLocker locker(&GetLock());
@@ -1577,7 +1583,11 @@ QString OPFResource::GetOPFDefaultText(const QString &version)
     }
     // epub 3 set dcterms:modified date time in ISO 8601 format
     QDateTime local(QDateTime::currentDateTime());
-    local.setTimeZone(QTimeZone::utc());
+#if QT_VERSION >= QT_VERSION_CHECK(6,5,0)
+    local.setTimeZone(QTimeZone::UTC);
+#else
+    local.setTimeSpec(Qt::UTC);
+#endif
     QString datetime = local.toString(Qt::ISODate);
     return TEMPLATE3_TEXT.arg(Utility::CreateUUID()).arg(defaultLanguage).arg(tr("[Main title here]")).arg(datetime);
 }
@@ -1607,18 +1617,52 @@ QString OPFResource::GetUniqueID(const QString &preferred_id, const OPFParser& p
 QString OPFResource::GetResourceMimetype(const Resource *resource) const
 {
     QString mimetype = resource->GetMediaType();
+    QString absolute_file_path = resource->GetFullPath();
     if (mimetype.isEmpty()) {
-        mimetype = GetFileMimetype(resource->Filename());
+        QString extension = QFileInfo(absolute_file_path).suffix().toLower();
+        mimetype = MediaTypes::instance()->GetMediaTypeFromExtension(extension, "");
     }
-    return mimetype; 
+    if (mimetype.isEmpty()) {
+        mimetype = MediaTypes::instance()->GetFileDataMimeType(absolute_file_path, "");
+    }
+    if (mimetype == "application/xml") {
+        mimetype = MediaTypes::instance()->GetMediaTypeFromXML(absolute_file_path, "application/xml");
+    }
+    return mimetype;
 }
 
 
-QString OPFResource::GetFileMimetype(const QString &filepath) const
+void OPFResource::UpdateManifestMediaTypes(const QList<Resource*> resources)
 {
-    MediaTypes * MTMap = MediaTypes::instance();
-    QString extension = QFileInfo(filepath).suffix().toLower();
-    return MTMap->GetMediaTypeFromExtension(extension, FALLBACK_MIMETYPE);
+    QWriteLocker locker(&GetLock());
+    QString source = CleanSource::ProcessXML(GetText(),"application/oebps-package+xml");
+    OPFParser p;
+    p.parse(source);
+    foreach(Resource* resource, resources) {
+        // QString absolute_file_path = resource->GetFullPath();
+        // QString extension = QFileInfo(absolute_file_path).suffix().toLower();
+        // QString ext_mimetype = MediaTypes::instance()->GetMediaTypeFromExtension(extension, "");
+        // QString data_mimetype = MediaTypes::instance()->GetFileDataMimeType(absolute_file_path, "");
+        QString manifest_mimetype;
+        QString resource_mimetype = GetResourceMimetype(resource);
+        QString href = Utility::URLEncodePath(GetRelativePathToResource(resource));
+        int pos = p.m_hrefpos.value(href, -1);
+        if ((pos >= 0) && (pos < p.m_manifest.count())) {
+            ManifestEntry me = p.m_manifest.at(pos);
+            manifest_mimetype = me.m_mtype;
+            // qDebug() << "    ";
+            // qDebug() << "resource name:     " << resource->GetRelativePath();
+            // qDebug() << "resource mimetype: " << resource_mimetype;
+            // qDebug() << "ext mimetype:      " << ext_mimetype;
+            // qDebug() << "data mimetype:     " << data_mimetype;
+            // qDebug() << "manifest_mimetype: " << manifest_mimetype;
+            if (manifest_mimetype != resource_mimetype) {
+                me.m_mtype = resource_mimetype;
+                p.m_manifest.replace(pos, me);
+            }
+        }
+    }
+    UpdateText(p);
 }
 
 
